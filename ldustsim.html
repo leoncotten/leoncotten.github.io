@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LDustSim</title>
+</head>
+<body>
+    <h1>LDustSim</h1>
+    <p>
+        LDustSim is my first attempt in bulk physics processing using
+	the GPU, and my first time programming for the GPU in general.
+	I chose to use CUDA as I have an Nvidia GPU and because it was
+	easier to find resources on it. I was inspired by a website I
+	would visit in school sometimes called 
+        <a href="https://www.kodub.com/apps/dustsim">Kodub</a>. Although
+	I haven't gotten around to implementing many of the extra features
+	Kodub has.
+    </p>
+
+    <h2>Logic Overview</h2>
+    <p>
+	On the screen are particles. Each particle has an xy position and
+	velocity, mass, and can optionally influence other particles or be
+	immovable. I named influencer particles as gravitational nodes
+	(through the isGravNode flag in the particle structure in 
+	particle.h).
+    </p>
+    <p>
+	The initial layout of particles (default is a ring of moveable but
+	non influencial particles spinning around an immovable central grav
+	node) is loaded into the two particle buffers A and B. A flag is used
+	to alternate between the two buffers being the input, allowing for
+	double buffering. Then the CUDA kernel for simulating the particles
+	is called for each particle in the buffer. The pseudo-code for the
+	gravitational computation for each particle is as follows:
+	<pre><code>
+		if (otherNode.isGravNode) {
+			// Get difference in position
+			dx = otherParticle.x - thisParticle.x;
+			dy = otherParticle.y - thisParticle.y;
+			
+			// Get distance between nodes via Pythagorian theorem
+			// r of the gravitational equation
+			distance = sqrt(square(dx) + square(dy) + 0.1);
+			
+			// F = G(m1m2)/r^2
+			force = (otherParticle.mass * 10) / square(distance);
+			
+			// Update velocity
+			thisParticle.vx += (dx / distance) * force * deltaTime;
+            		thisParticle.vy += (dy / distance) * force * deltaTime;			
+		}
+		
+		// Update position
+		thisParticle.x += thisParticle.vx * deltaTime;
+		thisParticle.y += thisParticle.vy * deltaTime;
+
+		// Update output buffer
+		outputBuffer[thisParticle.index] = thisParticle;
+	</code></pre>
+    </p>
+
+    <p>
+	Actually rendering the simulation is done via RayLib. I usually went for
+	SDL with these kind of projects, but since I started with C# I used raylib.
+	I love the fact that raylib has so many well maintained bindings. It's 
+	practically universal. <br> Rendering particles is also done with GPU processing.
+	Instead of looping through a particle buffer and rendering each particle
+	individually, all pixels are drawn to a pixel buffer via the renderParticles
+	CUDA GPU kernel, then the pixel buffer itself is rendered.
+    </p>
+
+    <h2>C# phase</h2>
+    <p>
+	For a while I thought I would try to learn C# full time, and used
+	this project as a way of getting experience in it. Although I opted
+	to use C++ instead, most of the logic is from the C# phase. I also
+	continued to use RayLib as my graphics library of choice even after
+	switching. However, the GPU programming library I used changed. With
+	C# I used ILGPU (which was a great experience, I would recommend it
+	to C# devs) then switched to bare CUDA with C++.
+    </p>
+
+    <a href="https://leoncotten.github.io">Homepage</a>
+</body>
+</html>
